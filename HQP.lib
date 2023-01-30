@@ -1,0 +1,414 @@
+///////////////////////////////////////////////////////////////////////////////
+version="$Id: HQP.lib 2023-01-31$";
+category="Partial Latin squares";
+info="
+LIBRARY:  HQP.lib         Hadamard quasigroup product.
+
+AUTHOR: Victor Alvarez,         valvarez@us.es
+        Jose Andres Armario,    armario@us.es
+        Raul Falcon,            rafalgan@us.es
+        Maria Dolores Frau,     mdfrau@us.es
+        Felix Gudiel,           gudiel@us.es
+        Maria Belen Guemes,     bguemes@us.es
+        
+PROCEDURES:
+
+ isom(L1,L2)        Compute the set of isomorphisms between two Latin squares.  
+ HadProd(P,Q,L)     Compute the Hadamard quasigroup product of two arrays.
+ HL(P)              Generate the set of Latin squares to which a given partial Latin 
+                    square is completable and whose successive Hadamard quasigroup 
+                    products preserve the Latin square property.
+ LS(P)              Generate the set of Latin squares containing a partial Latin square.
+ PLT(P,T)           Generate the set partial Latin squares that result after filling the
+                    cells of a transversal, with at least one empty cell, in a partial 
+                    Latin square.
+ rho(L)             Compute the isomorphism invariant rho of a Latin square.
+ F_n(x,n)           Help function to generate Latin squares of order n.
+ G_n(x,y,n)         Help function to generate Latin squares of order n.
+
+KEYWORDS: Hadamard quasigroup product; partial Latin square.
+";
+
+LIB "presolve.lib";         //for elimlinearpart.
+LIB "solve.lib";            //for solve.
+
+///////////////////////////////////////////////////////////////////////////////
+//Procs.
+
+proc isom(intmat L1, intmat L2)
+"USAGE:  HadProd(L1,L2);
+PURPOSE: Compute the set of isomorphisms between two Latin squares.
+RETURN:  The list of isomorphism between two Latin squares L1 and L2.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+@end format
+"
+{
+    int i,j,k,l;
+    int n=nrows(L1);
+    intmat P[1][n];
+    list L;
+    ring R = 0,(x(1..n)),dp;
+    ideal I;
+    poly p;
+    //Construct an ideal associated to the Latin squares L1 and L2, whose 
+    //algebraic set can be identified with the set of isomorphism between L1
+    //and L2.
+    for(i=1;i<=n;i++){
+        I = I + F_n(x(i),n);
+        for(j=1;j<=n;j++){
+            if (i!=j){
+                I = I + G_n(x(i),x(j),n);
+            }
+            for(k=1;k<=n;k++){
+                for(l=1;l<=n;l++){
+                    I = I + F_n(x(i),n)*F_n(x(j),n)*(x(L1[i,j])-L2[k,l])/((x(i)-k)*(x(j)-l));
+                }
+            }
+        }
+    }
+    //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
+    //solution. Otherwise, the list of isomorphisms is obtained.
+    ideal GB=slimgb(I);
+    def AC = solve(GB,"nodisplay");
+    setring AC;
+    for(k=1;k<=size(SOL);k++){
+         P=0*P;
+         for(i=1;i<=n;i++){
+            for(j=1;j<=n;j++){
+                if (j==SOL[k][i]){
+                    P[1,i]=j;
+                    break;
+                }
+            }
+         }
+         L[k]=P;
+    }
+    return(L);
+}
+example{
+    intmat L1[4][4]=2,4,3,1,3,1,2,4,1,3,4,2,4,2,1,3;
+    intmat L2[4][4]=2,3,1,4,4,1,3,2,3,2,4,1,1,4,2,3;
+    isom(L1,L2);
+}
+
+proc HadProd(intmat P, intmat L, intmat Q)
+"USAGE:  HadProd(P,L,Q);
+PURPOSE: Compute the Hadamard L-product of two arrays P and Q.
+RETURN:  The Hadamard L-product of two nxn arrays P and Q with respect to a 
+         Latin square L of the same order n.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+Empty cells will be represented by zeros.
+@end format
+"
+{
+    int i,j;
+    int n=nrows(P);
+    intmat H[n][n];
+    //Construct the Hadamard product.
+    for(i=1;i<=n;i++){
+        for(j=1;j<=n;j++){
+            H[i,j]=L[P[i,j],Q[i,j]];
+        }
+    }
+    return(H);
+}
+example{
+    intmat L1[3][3]=1,2,3,3,1,2,2,3,1;
+    intmat L2[3][3]=1,3,2,3,2,1,2,1,3;
+    intmat L3[3][3]=1,2,3,2,3,1,3,1,2;
+    HadProd(L1,L2,L3);
+}
+
+proc HL(intmat P)
+"USAGE:  HL(P);
+PURPOSE: Generate the set of Latin squares to which a given partial Latin 
+         square is completable and whose successive Hadamard quasigroup 
+         products preserve the Latin square property..
+RETURN:  The list of Latin squares to which the partial Latin square P is 
+         completable. Empty cells in P are represented by zeros.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+Empty cells will be represented by zeros.
+@end format
+"
+{
+    int i,j,k,s;
+    int n=nrows(P);
+    intmat T[n][2];
+    intmat Q[n][n];
+    list L,LT,L1,L2;
+    ring R = 0,(x(1..n)(1..n)),dp;
+    ideal I;
+    poly p;
+    //Construct the first transversal that must be filled to get a Latin square
+    //satisfying the required conditions.
+    for(i=1;i<=n;i++){
+        T[i,1]=P[P[i,i],P[i,i]];
+        T[i,2]=P[i,i];
+    }
+    //Generate the list of partial Latin squares that result after filling the
+    //cells of the previous transversal.
+    LT=PLT(P,T);
+    //Associate each partial Latin square in the list to the previous transversal.
+    for(i=1;i<=size(LT);i++){
+        L[i]=list();
+        L[i][1]=LT[i];
+        L[i][2]=T;
+    }
+    //Generate successive localizated transversals that must be filled to get
+    //the required Latin squares. Then, fill these transversals.
+    while (size(L)>0){
+        s=0;
+        Q=L[1][1];
+        T=L[1][2];
+        L=delete(L,1);
+        for(i=1;i<=n;i++){
+            T[i,1]=Q[T[i,1],P[i,i]];
+        }
+        for(i=1;i<=n;i++){
+            if (Q[T[i,1],T[i,2]]==0){
+                s=1;
+                break;
+            }
+        }
+        if (s==0){
+            L1[size(L1)+1]=Q;
+        }
+        else{
+            LT=PLT(Q,T);
+            for(i=1;i<=size(LT);i++){
+                L[size(L)+1]=list(LT[i],T);
+            }
+        }
+    }
+    //Generate the Latin squares to which each obtained partial Latin
+    //square is completable. Each one of these Latin squares satisfies the
+    //required conditions.
+    for(i=1;i<=size(L1);i++){
+        L2=LS(L1[i]);
+        for(j=1;j<=size(L2);j++){
+            L[size(L)+1]=L2[j];
+        }
+    }
+    return(L);
+}
+example{
+    intmat P[4][4]=2,0,0,0,0,1,0,0,0,0,4,0,0,0,0,3;
+    HL(P);
+}
+
+proc LS(intmat P)
+"USAGE:  HadProd(P);
+PURPOSE: Generate the set of Latin squares containing a partial Latin square.
+RETURN:  The list of Latin squares to which the partial Latin square P is 
+         completable.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+Empty cells will be represented by zeros.
+@end format
+"
+{
+    int i,j,k,s;
+    int n=nrows(P);
+    intmat Q[n][n];
+    list L,LP;
+    ring R = 0,(x(1..n)(1..n)),dp;
+    ideal I;
+    poly p;
+    //Construct an ideal associated to the partial Latin square P, whose
+    //algebraic set can be identified with the required list of Latin squares.
+    for(i=1;i<=n;i++){
+        for(j=1;j<=n;j++){
+            if (P[i,j]==0){
+                I=I+F_n(x(i)(j),n);
+                for(k=1;k<=n;k++){
+                    if (k!=i){
+                        if (P[k,j]==0){
+                            I = I + G_n(x(i)(j),x(k)(j),n);
+                        }
+                        else{
+                            I = I + G_n(x(i)(j),P[k,j],n);
+                        }
+                    }
+                    if (k!=j){
+                        if (P[i,k]==0){
+                            I = I + G_n(x(i)(j),x(i)(k),n);
+                        }
+                        else{
+                            I = I + G_n(x(i)(j),P[i,k],n);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
+    //solution. Otherwise, the list of Latin squares is obtained.
+    LP=elimlinearpart(I);
+    def R_r = tolessvars(LP[1],"dp");
+    setring R_r;
+    ideal GB=slimgb(IMAG);
+    def AC = solve(GB,"nodisplay");
+    setring AC;
+    for(k=1;k<=size(SOL);k++){
+        s=0;
+        Q=P;
+        for(i=1;i<=n;i++){
+            for(j=1;j<=n;j++){
+                if (Q[i,j]==0){
+                    s=s+1;
+                    Q[i,j]=int(SOL[k][s]);
+                }
+            }
+        }
+        L[k]=Q;
+    }
+    return(L);
+}
+example{
+    intmat P[4][4]=2,0,0,0,0,1,0,0,0,0,4,0,0,0,0,3;
+    LS(P);
+}
+
+proc PLT(intmat P, intmat T)
+"USAGE:  PLT(P,T);
+PURPOSE: Generate the set partial Latin squares that result after filling the   
+         cells of a transversal, with at least one empty cell, in a partial 
+         Latin square.
+RETURN:  The list of partial Latin squares that result after filling the cell 
+         of a transversal T in a partial Latin square.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+Empty cells will be represented by zeros.
+@end format
+"
+{
+    int i,j,k,s;
+    int n=nrows(P);
+    intmat Q[n][n];
+    list L,LP;
+    ring R = 0,(x(1..n)(1..n)),dp;
+    ideal I;
+    poly p;
+    //Construct an ideal associated to the transversal T, whose
+    //algebraic set can be identified with the required list.
+    for(i=1;i<=n;i++){
+        if (P[T[i,1],T[i,2]]==0){
+            I = I + F_n(x(T[i,1])(T[i,2]),n);
+            for(j=1;j<=n;j++){
+                if (j!=i){
+                    if (P[T[j,1],T[j,2]]==0){
+                        if (j>i){
+                            I = I + G_n(x(T[i,1])(T[i,2]),x(T[j,1])(T[j,2]),n);    
+                        }
+                    }
+                    else{
+                        I = I + G_n(x(T[i,1])(T[i,2]),P[T[j,1],T[j,2]],n); 
+                    }
+                }
+            }
+            for(j=1;j<=n;j++){
+                if (P[T[i,1],j]>0){
+                    I = I + G_n(x(T[i,1])(T[i,2]),P[T[i,1],j],n);
+                }
+                if (P[j,T[i,2]]>0){
+                    I = I + G_n(x(T[i,1])(T[i,2]),P[j,T[i,2]],n);
+                }
+            }
+        }
+    }
+    //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
+    //solution. Otherwise, the list of Latin squares is obtained.
+    LP=elimlinearpart(I);
+    def R_r = tolessvars(LP[1],"dp");
+    setring R_r;
+    ideal GB=slimgb(IMAG);
+    if (GB!=1){
+        def AC = solve(GB,"nodisplay");
+        setring AC;
+        for(k=1;k<=size(SOL);k++){
+            s=0;
+            Q=P;
+            for(i=1;i<=n;i++){
+                for(j=1;j<=n;j++){
+                    if (T[j,1]==i){
+                        if (Q[i,T[j,2]]==0){
+                            s=s+1;
+                            Q[i,T[j,2]]=int(SOL[k][s]);
+                        }
+                    }
+                }
+            }
+            L[k]=Q;
+        }
+    }
+    return(L);
+}
+example{
+    intmat P[4][4]=2,0,0,0,0,1,0,0,0,0,4,0,0,0,0,3;
+    intmat T[4][2]=1,2,2,1,3,4,4,3;
+    PLT(P,T);    
+}
+
+
+proc rho(intmat L)
+"USAGE:  rho(L);
+PURPOSE: Compute the isomorphism invariant rho of a Latin square.
+RETURN:  The minimum positive integer k such that the k-iteration of the 
+         Hadamard L-product of L is L itself.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+@end format
+"
+{
+    int p;
+    int n=nrows(L);
+    intmat HP[n][n]=HadProd(L,L,L);
+    p=2;
+    //Compute the isomorphism invariant by iterating the Hadamard 
+    //L-product.
+    while (HP!=L){
+        HP=HadProd(HP,L,L);
+        p=p+1;
+    }
+    return(p);
+}
+example{
+    intmat L[3][3]=1,2,3,3,1,2,2,3,1;
+    rho(L);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+//Help functions
+//////////////////////////////////////////////////////////////////////////////
+proc F_n(poly x, int n)
+"USAGE:  F_n(x,n);
+PURPOSE: Auxiliar function to generate Latin squares of order n.
+RETURN: A polynomial in x whose zeros constitute the symbols that can take the
+        Latin square under consideration.
+"
+{
+    int i;
+    poly p;
+    p=1;
+    for(i=1;i<=n;i++){
+        p=p*(x-i);
+    }
+    return(p);
+}
+
+proc G_n(poly x, poly y, int n)
+"USAGE:  G_n(x,y,n);
+PURPOSE: Auxiliar function to generate Latin squares of order n.
+RETURN: A polynomial in x whose zeros constitute the symbols that can take two 
+        cells with distinct symbols within the Latin square under consideration.
+"
+{
+    return((F_n(x,n)-F_n(y,n))/(x-y));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// E n d   O f   F i l e
