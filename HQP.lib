@@ -262,7 +262,12 @@ Empty cells will be represented by zeros.
                 for(j=1;j<=n;j++){
                     if (Q[i,j]==0){
                         s=s+1;
-                        Q[i,j]=int(SOL[k][s]);
+                        for(l=1;l<=n;l++){
+                            if (SOL[k][s]==l){
+                                Q[i,j]=l;
+                                break;
+                            }
+                        }
                     }
                 }
             }
