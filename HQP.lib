@@ -13,11 +13,11 @@ AUTHOR: Victor Alvarez,         valvarez@us.es
         
 PROCEDURES:
 
- isom(L1,L2)        Compute the set of isomorphisms between two Latin squares.  
  HadProd(P,Q,L)     Compute the Hadamard quasigroup product of two arrays.
  HL(P)              Generate the set of Latin squares to which a given partial Latin 
                     square is completable and whose successive Hadamard quasigroup 
                     products preserve the Latin square property.
+ isom(L1,L2)        Compute the set of isomorphisms between two Latin squares. 
  LS(P)              Generate the set of Latin squares containing a partial Latin square.
  PLT(P,T)           Generate the set partial Latin squares that result after filling the
                     cells of a transversal, with at least one empty cell, in a partial 
@@ -34,63 +34,6 @@ LIB "solve.lib";            //for solve.
 
 ///////////////////////////////////////////////////////////////////////////////
 //Procs.
-
-proc isom(intmat L1, intmat L2)
-"USAGE:  HadProd(L1,L2);
-PURPOSE: Compute the set of isomorphisms between two Latin squares.
-RETURN:  The list of isomorphism between two Latin squares L1 and L2.
-@format
-The symbols must be in the set [n]={1,2,...,n}
-@end format
-"
-{
-    int i,j,k,l;
-    int n=nrows(L1);
-    intmat P[1][n];
-    list L;
-    ring R = 0,(x(1..n)),dp;
-    ideal I;
-    poly p;
-    //Construct an ideal associated to the Latin squares L1 and L2, whose 
-    //algebraic set can be identified with the set of isomorphism between L1
-    //and L2.
-    for(i=1;i<=n;i++){
-        I = I + F_n(x(i),n);
-        for(j=1;j<=n;j++){
-            if (i!=j){
-                I = I + G_n(x(i),x(j),n);
-            }
-            for(k=1;k<=n;k++){
-                for(l=1;l<=n;l++){
-                    I = I + F_n(x(i),n)*F_n(x(j),n)*(x(L1[i,j])-L2[k,l])/((x(i)-k)*(x(j)-l));
-                }
-            }
-        }
-    }
-    //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
-    //solution. Otherwise, the list of isomorphisms is obtained.
-    ideal GB=slimgb(I);
-    def AC = solve(GB,"nodisplay");
-    setring AC;
-    for(k=1;k<=size(SOL);k++){
-         P=0*P;
-         for(i=1;i<=n;i++){
-            for(j=1;j<=n;j++){
-                if (j==SOL[k][i]){
-                    P[1,i]=j;
-                    break;
-                }
-            }
-         }
-         L[k]=P;
-    }
-    return(L);
-}
-example{
-    intmat L1[4][4]=2,4,3,1,3,1,2,4,1,3,4,2,4,2,1,3;
-    intmat L2[4][4]=2,3,1,4,4,1,3,2,3,2,4,1,1,4,2,3;
-    isom(L1,L2);
-}
 
 proc HadProd(intmat P, intmat L, intmat Q)
 "USAGE:  HadProd(P,L,Q);
@@ -197,6 +140,63 @@ Empty cells will be represented by zeros.
 example{
     intmat P[4][4]=2,0,0,0,0,1,0,0,0,0,4,0,0,0,0,3;
     HL(P);
+}
+
+proc isom(intmat L1, intmat L2)
+"USAGE:  HadProd(L1,L2);
+PURPOSE: Compute the set of isomorphisms between two Latin squares.
+RETURN:  The list of isomorphism between two Latin squares L1 and L2.
+@format
+The symbols must be in the set [n]={1,2,...,n}
+@end format
+"
+{
+    int i,j,k,l;
+    int n=nrows(L1);
+    intmat P[1][n];
+    list L;
+    ring R = 0,(x(1..n)),dp;
+    ideal I;
+    poly p;
+    //Construct an ideal associated to the Latin squares L1 and L2, whose 
+    //algebraic set can be identified with the set of isomorphism between L1
+    //and L2.
+    for(i=1;i<=n;i++){
+        I = I + F_n(x(i),n);
+        for(j=1;j<=n;j++){
+            if (i!=j){
+                I = I + G_n(x(i),x(j),n);
+            }
+            for(k=1;k<=n;k++){
+                for(l=1;l<=n;l++){
+                    I = I + F_n(x(i),n)*F_n(x(j),n)*(x(L1[i,j])-L2[k,l])/((x(i)-k)*(x(j)-l));
+                }
+            }
+        }
+    }
+    //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
+    //solution. Otherwise, the list of isomorphisms is obtained.
+    ideal GB=slimgb(I);
+    def AC = solve(GB,"nodisplay");
+    setring AC;
+    for(k=1;k<=size(SOL);k++){
+         P=0*P;
+         for(i=1;i<=n;i++){
+            for(j=1;j<=n;j++){
+                if (j==SOL[k][i]){
+                    P[1,i]=j;
+                    break;
+                }
+            }
+         }
+         L[k]=P;
+    }
+    return(L);
+}
+example{
+    intmat L1[4][4]=2,4,3,1,3,1,2,4,1,3,4,2,4,2,1,3;
+    intmat L2[4][4]=2,3,1,4,4,1,3,2,3,2,4,1,1,4,2,3;
+    isom(L1,L2);
 }
 
 proc LS(intmat P)
