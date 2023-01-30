@@ -285,7 +285,7 @@ Empty cells will be represented by zeros.
 @end format
 "
 {
-    int i,j,k,s;
+    int i,j,k,l,s;
     int n=nrows(P);
     intmat Q[n][n];
     list L,LP;
@@ -336,7 +336,12 @@ Empty cells will be represented by zeros.
                     if (T[j,1]==i){
                         if (Q[i,T[j,2]]==0){
                             s=s+1;
-                            Q[i,T[j,2]]=int(SOL[k][s]);
+                            for(l=1;l<=n;l++){
+                                if (SOL[k][s]==l){
+                                   Q[i,T[j,2]]=l;
+                                   break;
+                                }
+                            }
                         }
                     }
                 }
