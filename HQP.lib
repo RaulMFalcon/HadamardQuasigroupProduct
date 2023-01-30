@@ -177,19 +177,21 @@ The symbols must be in the set [n]={1,2,...,n}
     //Obtain the Gröbner basis of the ideal. If it is 1, then there is no
     //solution. Otherwise, the list of isomorphisms is obtained.
     ideal GB=slimgb(I);
-    def AC = solve(GB,"nodisplay");
-    setring AC;
-    for(k=1;k<=size(SOL);k++){
-         P=0*P;
-         for(i=1;i<=n;i++){
-            for(j=1;j<=n;j++){
-                if (j==SOL[k][i]){
-                    P[1,i]=j;
-                    break;
+    if (GB!=1){
+        def AC = solve(GB,"nodisplay");
+        setring AC;
+        for(k=1;k<=size(SOL);k++){
+             P=0*P;
+             for(i=1;i<=n;i++){
+                for(j=1;j<=n;j++){
+                    if (j==SOL[k][i]){
+                        P[1,i]=j;
+                        break;
+                    }
                 }
-            }
-         }
-         L[k]=P;
+             }
+             L[k]=P;
+        }
     }
     return(L);
 }
@@ -250,20 +252,22 @@ Empty cells will be represented by zeros.
     def R_r = tolessvars(LP[1],"dp");
     setring R_r;
     ideal GB=slimgb(IMAG);
-    def AC = solve(GB,"nodisplay");
-    setring AC;
-    for(k=1;k<=size(SOL);k++){
-        s=0;
-        Q=P;
-        for(i=1;i<=n;i++){
-            for(j=1;j<=n;j++){
-                if (Q[i,j]==0){
-                    s=s+1;
-                    Q[i,j]=int(SOL[k][s]);
+    if (GB!=1){
+        def AC = solve(GB,"nodisplay");
+        setring AC;
+        for(k=1;k<=size(SOL);k++){
+            s=0;
+            Q=P;
+            for(i=1;i<=n;i++){
+                for(j=1;j<=n;j++){
+                    if (Q[i,j]==0){
+                        s=s+1;
+                        Q[i,j]=int(SOL[k][s]);
+                    }
                 }
             }
+            L[k]=Q;
         }
-        L[k]=Q;
     }
     return(L);
 }
